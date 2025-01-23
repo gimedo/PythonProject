@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado de la API</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .container {
+            margin-top: 30px;
+        }
+        .table {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Estado de la API</h2>
+        <p id="api-status">API activa: {{ 'Sí' if api_active else 'No' }}</p>
+        
+        <h3>Registros Procesados</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th># Nro Central</th>
+                    <th>Status</th>
+                    <th>Mensaje de Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.nrocentral }}</td>
+                    <td>{{ registro.status }}</td>
+                    <td>{{ registro.error if 'error' in registro else 'N/A' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <button class="btn btn-primary" onclick="toggleAPI()">Activar/Desactivar API</button>
+    </div>
+
+    <script>
+        function toggleAPI() {
+            fetch('/toggle-api', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert('API ' + (data.api_active ? 'Activada' : 'Desactivada'));
+                
+                // Actualiza el estado de la API en la interfaz sin recargar la página
+                document.getElementById('api-status').textContent = 'API activa: ' + (data.api_active ? 'Sí' : 'No');
+            });
+        }
+    </script>
+</body>
+</html>
