@@ -68,13 +68,27 @@ def sync_data():
                 return
 
             with mysql_conn.cursor() as mysql_cursor, postgres_conn.cursor() as postgres_cursor:
-                # Consulta los datos nuevos desde MySQL
-                print("Consultando datos desde MySQL...")
-                mysql_cursor.execute("""SELECT nrocentral, nroticket, fecha, idempresa, ruc, razonSocial, EESS, terminal_cac,
-                                           nrotarjeta, identif_disp, total_sin_impuestos, ventas, total_con_impuestos, 
-                                           docchofer, cantidad, codproducto, producto, PRECIOS
-                                    FROM VENTAS_ALIANZA
-                                    WHERE fecha > (NOW() - INTERVAL 1 DAY)""")
+                # Consultar el último nrocentral insertado en la tabla ventas_eess en PostgreSQL
+                postgres_cursor.execute("SELECT MAX(nrocentral) FROM ventas_eess")
+                last_nrocentral = postgres_cursor.fetchone()[0]
+
+                if last_nrocentral:
+                    print(f"Último nrocentral en PostgreSQL: {last_nrocentral}")
+                    # Si existe el último nrocentral, consultamos registros mayores a ese nrocentral en VENTAS_ALIANZA
+                    mysql_cursor.execute("""SELECT nrocentral, nroticket, fecha, idempresa, ruc, razonSocial, EESS, terminal_cac,
+                                               nrotarjeta, identif_disp, total_sin_impuestos, ventas, total_con_impuestos, 
+                                               docchofer, cantidad, codproducto, producto, PRECIOS
+                                            FROM VENTAS_ALIANZA
+                                            WHERE nrocentral > %s""", (last_nrocentral,))
+                else:
+                    print("No se encontró ningún nrocentral en PostgreSQL. Insertando todos los registros del día.")
+                    # Si no hay ningún nrocentral, consulta los registros del día
+                    mysql_cursor.execute("""SELECT nrocentral, nroticket, fecha, idempresa, ruc, razonSocial, EESS, terminal_cac,
+                                               nrotarjeta, identif_disp, total_sin_impuestos, ventas, total_con_impuestos, 
+                                               docchofer, cantidad, codproducto, producto, PRECIOS
+                                            FROM VENTAS_ALIANZA
+                                            WHERE fecha > (NOW() - INTERVAL 1 DAY)""")
+
                 rows = mysql_cursor.fetchall()
 
                 if not rows:
@@ -113,7 +127,7 @@ def sync_data():
             if postgres_conn:
                 postgres_conn.close()
 
-        time.sleep(60)  # Ejecutar cada minuto
+        time.sleep(60)  # Ejecutar cada 10 minutos
 
 # Ruta para activar/desactivar la API
 @app.route('/toggle-api', methods=['POST'])
@@ -143,6 +157,3 @@ Thread(target=sync_data, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
-
